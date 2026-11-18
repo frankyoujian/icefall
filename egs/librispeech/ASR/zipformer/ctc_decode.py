@@ -205,6 +205,13 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--enable-distillation",
+        type=str2bool,
+        default=False,
+        help="Whether to eanble distillation.",
+    )
+
+    parser.add_argument(
         "--bpe-model",
         type=str,
         default="data/lang_bpe_500/bpe.model",
@@ -399,7 +406,9 @@ def decode_one_batch(
             value=LOG_EPS,
         )
 
-    encoder_out, encoder_out_lens = model.forward_encoder(feature, feature_lens)
+    # encoder_out, encoder_out_lens = model.forward_encoder(feature, feature_lens)
+    layer_results, encoder_out_lens = model.forward_encoder(feature, feature_lens)
+    encoder_out = layer_results[-1]
     ctc_output = model.ctc_output(encoder_out)  # (N, T, C)
 
     if params.decoding_method == "ctc-greedy-search":

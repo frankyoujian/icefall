@@ -116,6 +116,7 @@ class Zipformer2(EncoderInterface):
         causal: bool = False,
         chunk_size: Tuple[int] = [-1],
         left_context_frames: Tuple[int] = [-1],
+        middle_output_layer: int = None,  # 0-based layer index
     ) -> None:
         super(Zipformer2, self).__init__()
 
@@ -200,6 +201,11 @@ class Zipformer2(EncoderInterface):
         self.downsample_output = SimpleDownsample(
             max(encoder_dim), downsample=output_downsampling_factor, dropout=dropout
         )
+
+        self.output_layers = []
+        if middle_output_layer is not None:
+            assert middle_output_layer >= 0 and middle_output_layer < num_encoders
+            self.output_layers.append(middle_output_layer)
 
     def get_feature_masks(self, x: Tensor) -> Union[List[float], List[Tensor]]:
         """
@@ -296,7 +302,7 @@ class Zipformer2(EncoderInterface):
         x: Tensor,
         x_lens: Tensor,
         src_key_padding_mask: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> Tuple[List[Tensor], Tensor]:
         """
         Args:
           x:
@@ -327,6 +333,7 @@ class Zipformer2(EncoderInterface):
         else:
             attn_mask = self._get_attn_mask(x, chunk_size, left_context_chunks)
 
+        layer_results = []
         for i, module in enumerate(self.encoders):
             ds = self.downsampling_factor[i]
             x = convert_num_channels(x, self.encoder_dim[i])
@@ -343,6 +350,10 @@ class Zipformer2(EncoderInterface):
                 attn_mask=attn_mask,
             )
             outputs.append(x)
+            # print(f"------------>[{i}] shape:{x.shape}")
+            if i in self.output_layers:
+                layer_results.append(self.downsample_output(x))
+                # print(f"===> middle output shape:{self.downsample_output(x).shape}")
 
         # if the last output has the largest dimension, x will be unchanged,
         # it will be the same as outputs[-1].  Otherwise it will be concatenated
@@ -359,7 +370,10 @@ class Zipformer2(EncoderInterface):
                 warnings.simplefilter("ignore")
                 lengths = (x_lens + 1) // 2
 
-        return x, lengths
+        layer_results.append(x)
+        # print(f"======> output shape:{x.shape}")
+        # return x, lengths
+        return layer_results, lengths
 
     def _get_attn_mask(
         self, x: Tensor, chunk_size: int, left_context_chunks: int

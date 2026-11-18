@@ -41,6 +41,7 @@ class AsrModel(nn.Module):
         use_transducer: bool = True,
         use_ctc: bool = False,
         use_attention_decoder: bool = False,
+        num_codebooks: int = 0,
     ):
         """A joint CTC & Transducer ASR model.
 
@@ -121,6 +122,20 @@ class AsrModel(nn.Module):
         else:
             assert attention_decoder is None
 
+        from icefall import is_module_available
+
+        if not is_module_available("multi_quantization"):
+            raise ValueError("Please 'pip install multi_quantization' first.")
+
+        from multi_quantization.prediction import JointCodebookLoss
+
+        if num_codebooks > 0:
+            self.codebook_loss_net = JointCodebookLoss(
+                predictor_channels=encoder_dim,
+                num_codebooks=num_codebooks,
+                is_joint=False,
+            )
+
     def forward_encoder(
         self, x: torch.Tensor, x_lens: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -147,7 +162,8 @@ class AsrModel(nn.Module):
 
         encoder_out, encoder_out_lens = self.encoder(x, x_lens, src_key_padding_mask)
 
-        encoder_out = encoder_out.permute(1, 0, 2)  # (T, N, C) ->(N, T, C)
+        # encoder_out = encoder_out.permute(1, 0, 2)  # (T, N, C) ->(N, T, C)
+        encoder_out = [out.permute(1, 0, 2) for out in encoder_out]
         assert torch.all(encoder_out_lens > 0), (x_lens, encoder_out_lens)
 
         return encoder_out, encoder_out_lens
@@ -296,6 +312,7 @@ class AsrModel(nn.Module):
         prune_range: int = 5,
         am_scale: float = 0.0,
         lm_scale: float = 0.0,
+        codebook_indexes: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Args:
@@ -335,7 +352,27 @@ class AsrModel(nn.Module):
         device = x.device
 
         # Compute encoder outputs
-        encoder_out, encoder_out_lens = self.forward_encoder(x, x_lens)
+        # encoder_out, encoder_out_lens = self.forward_encoder(x, x_lens)
+        layer_results, encoder_out_lens = self.forward_encoder(x, x_lens)
+
+        encoder_out = layer_results[-1]
+        middle_layer_output = layer_results[0]
+        if self.training and codebook_indexes is not None:
+            assert hasattr(self, "codebook_loss_net")
+            # print(f"------------------------------> codebook_indexes shape:{codebook_indexes.shape}, middle_layer_output shape:{middle_layer_output.shape}")
+            if codebook_indexes.shape[1] != middle_layer_output.shape[1]:
+                codebook_indexes = self.concat_successive_codebook_indexes(
+                    middle_layer_output, codebook_indexes
+                )
+            # print(f"================================> codebook_indexes shape:{codebook_indexes.shape}, middle_layer_output shape:{middle_layer_output.shape}, encoder_out shape:{encoder_out.shape}")
+            codebook_loss = self.codebook_loss_net(
+                middle_layer_output, codebook_indexes
+            )
+        else:
+            # when codebook index is not available.
+            codebook_loss = None
+
+        assert torch.all(encoder_out_lens > 0)
 
         row_splits = y.shape.row_splits(1)
         y_lens = row_splits[1:] - row_splits[:-1]
@@ -377,4 +414,30 @@ class AsrModel(nn.Module):
         else:
             attention_decoder_loss = torch.empty(0)
 
-        return simple_loss, pruned_loss, ctc_loss, attention_decoder_loss
+        return simple_loss, pruned_loss, ctc_loss, attention_decoder_loss, codebook_loss
+
+    @staticmethod
+    def concat_successive_codebook_indexes(middle_layer_output, codebook_indexes):
+        # Output rate of hubert is 50 frames per second,
+        # while that of current encoder is 25.
+        # Following code handling two issues:
+        # 1.
+        #   Roughly speaking, to generate another frame output,
+        #   hubert needes extra two frames,
+        #   while current encoder needs extra four frames.
+        #   Suppose there are only extra three frames provided,
+        #   hubert will generate another frame while current encoder does nothing.
+        # 2.
+        #   codebook loss is a frame-wise loss, to enalbe 25 frames studnet output
+        #   learns from 50 frames teacher output, two successive frames of teacher model
+        #   output is concatenated together.
+        t_expected = middle_layer_output.shape[1]
+        N, T, C = codebook_indexes.shape
+
+        # Handling issue 1.
+        if T >= t_expected * 2:
+            codebook_indexes = codebook_indexes[:, : t_expected * 2, :]
+        # Handling issue 2.
+        codebook_indexes = codebook_indexes.reshape(N, t_expected, C * 2)
+        assert middle_layer_output.shape[1] == codebook_indexes.shape[1]
+        return codebook_indexes

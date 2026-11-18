@@ -107,6 +107,7 @@ import sentencepiece as spm
 import torch
 import torch.nn as nn
 from asr_datamodule import LibriSpeechAsrDataModule
+from punct_er import DatasetPunctuationErrorRate
 from beam_search import (
     beam_search,
     fast_beam_search_nbest,
@@ -192,6 +193,22 @@ def get_parser():
         type=str,
         default="zipformer/exp",
         help="The experiment dir",
+    )
+
+    parser.add_argument(
+        "--enable-distillation",
+        type=str2bool,
+        default=False,
+        help="Whether to eanble distillation.",
+    )
+
+    parser.add_argument(
+        "--wer-type",
+        type=str,
+        default="traditional", # traditional | pc | c
+        help="The way to calculate WER, [traditional] means remove punctuations and all characters to upper, \
+                                        [pc] means with punctuations and casing, \
+                                        [c] means remove punctuatoins and with casing",
     )
 
     parser.add_argument(
@@ -452,7 +469,14 @@ def decode_one_batch(
             value=LOG_EPS,
         )
 
-    encoder_out, encoder_out_lens = model.forward_encoder(feature, feature_lens)
+    if params.enable_distillation:
+        layer_results, encoder_out_lens = model.forward_encoder(feature, feature_lens)
+        encoder_out = layer_results[-1]
+    else:
+        # TODO: add toggle control in encoder return logic
+        # encoder_out, encoder_out_lens = model.forward_encoder(feature, feature_lens)
+        layer_results, encoder_out_lens = model.forward_encoder(feature, feature_lens)
+        encoder_out = layer_results[-1]
 
     hyps = []
 
@@ -646,7 +670,7 @@ def decode_dataset(
     LM: Optional[LmScorer] = None,
     ngram_lm=None,
     ngram_lm_scale: float = 0.0,
-) -> Dict[str, List[Tuple[str, List[str], List[str]]]]:
+) -> Tuple[Dict[str, List[Tuple[str, List[str], List[str]]]], Dict[str,List[str]]]:
     """Decode dataset.
 
     Args:
@@ -684,6 +708,29 @@ def decode_dataset(
         log_interval = 20
 
     results = defaultdict(list)
+
+    def remove_punc_to_upper(text: str) -> str:
+        text = text.replace("‘", "'")
+        text = text.replace("’", "'")
+        tokens = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'")
+        s_list = [x.upper() if x in tokens else " " for x in text]
+        s = " ".join("".join(s_list).split()).strip()
+        return s
+
+    def remove_punc(text: str) -> str:
+        text = text.replace("‘", "'")
+        text = text.replace("’", "'")
+        tokens = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'")
+        s_list = [x if x in tokens else " " for x in text]
+        s = " ".join("".join(s_list).split()).strip()
+        return s
+
+    sentences = defaultdict(list)
+    per_ref_sentences = []
+    per_hyp_sentences = []
+    f1_ref_sentences = []
+    f1_hyp_sentences = []
+
     for batch_idx, batch in enumerate(dl):
         texts = batch["supervisions"]["text"]
         cut_ids = [cut.id for cut in batch["supervisions"]["cut"]]
@@ -703,9 +750,26 @@ def decode_dataset(
 
         for name, hyps in hyps_dict.items():
             this_batch = []
+
             assert len(hyps) == len(texts)
             for cut_id, hyp_words, ref_text in zip(cut_ids, hyps, texts):
                 ref_words = ref_text.split()
+                # print(hyp_words)
+
+                if params.wer_type == "traditional":
+                    ref_words = remove_punc_to_upper(ref_text).split()
+                    hyp_words = remove_punc_to_upper(" ".join(hyp_words)).split()
+                elif params.wer_type == "c":
+                    ref_words = remove_punc(ref_text).split()
+                    hyp_words = remove_punc(" ".join(hyp_words)).split()
+                else: # pc
+                    per_ref_sentences.append(ref_text)
+                    per_hyp_sentences.append(" ".join(hyp_words)) 
+
+                    if remove_punc_to_upper(ref_text) == remove_punc_to_upper(" ".join(hyp_words)):
+                        f1_ref_sentences.append(ref_text)
+                        f1_hyp_sentences.append(" ".join(hyp_words))                         
+
                 this_batch.append((cut_id, ref_words, hyp_words))
 
             results[name].extend(this_batch)
@@ -716,7 +780,12 @@ def decode_dataset(
             batch_str = f"{batch_idx}/{num_batches}"
 
             logging.info(f"batch {batch_str}, cuts processed until now is {num_cuts}")
-    return results
+    sentences["per_ref"] = per_ref_sentences
+    sentences["per_hyp"] = per_hyp_sentences
+    sentences["f1_ref"] = f1_ref_sentences
+    sentences["f1_hyp"] = f1_hyp_sentences
+    print(f"---------------------------> WER = 0 smaples : {len(f1_ref_sentences)}")
+    return results, sentences
 
 
 def save_asr_output(
@@ -773,6 +842,69 @@ def save_wer_results(
         s += f"{key}\t{val}{note}\n"
         note = ""
     logging.info(s)
+
+
+def getPunctSeq(tokens:List[str]) -> List[str]:
+    len_tokens = len(tokens)
+    punct = []
+    punct_marks = [',', '.', '?']
+    for i in range(len_tokens-1):
+        if tokens[i+1] in punct_marks:
+            punct.append(tokens[i+1])
+        elif tokens[i] not in punct_marks:
+            punct.append('0')
+    if tokens[len_tokens-1] not in punct_marks:
+        punct.append('0')
+    
+    return punct
+    
+def getCasingSeq(tokens:List[str]) -> List[str]:
+    casing = []
+    punct_marks = [',', '.', '?']
+    for token in tokens:
+        if token not in punct_marks:
+            casing.append('C' if token.istitle() else '0')
+    return casing
+
+def compute_f1_metric(ref_sentences:List[str], hyp_sentences:List[str], metric_type:str) -> Tuple[float, float, float]:
+    sum_true_predicted = 0
+    sum_all_predicted = 0
+    sum_all_expected = 0
+    
+    for reference, hypothesis in zip(ref_sentences, hyp_sentences):
+        ref_tokens = reference.split()
+        hyp_tokens = hypothesis.split()
+        
+        ref_seq = getCasingSeq(ref_tokens) if metric_type=="casing" else getPunctSeq(ref_tokens)
+        hyp_seq = getCasingSeq(hyp_tokens) if metric_type=="casing" else getPunctSeq(hyp_tokens)
+        if len(ref_seq) != len(hyp_seq):
+            # print(f"\nreference:{reference}\nhypothesis:{hypothesis}")
+            continue
+        
+        true_predicted = sum(1 for ref, hyp in zip(ref_seq, hyp_seq) if ref==hyp and ref!='0')
+        all_predicted = sum(1 for hyp in hyp_seq if hyp!='0')
+        all_expected = sum(1 for ref in ref_seq if ref!='0')
+
+        # if metric_type == "casing":
+        #     if all_predicted>0 and all_expected>0 and (true_predicted / all_predicted < 0.8 or true_predicted / all_expected < 0.8):
+        #         print(f"\nreference:{reference}\nhypothesis:{hypothesis}")
+
+        
+        sum_true_predicted += true_predicted
+        sum_all_predicted += all_predicted
+        sum_all_expected += all_expected
+        
+    # Calculate precision and recall
+    precision = sum_true_predicted / sum_all_predicted if sum_all_predicted else 0
+    recall = sum_true_predicted / sum_all_expected if sum_all_expected else 0
+    
+    # Calculate F1 score
+    if precision + recall == 0:
+        f1_score = 0.0
+    else:
+        f1_score = 2 * (precision * recall) / (precision + recall)
+
+    return precision, recall, f1_score
 
 
 @torch.no_grad()
@@ -871,6 +1003,7 @@ def main():
     # <blk> and <unk> are defined in local/train_bpe_model.py
     params.blank_id = sp.piece_to_id("<blk>")
     params.unk_id = sp.piece_to_id("<unk>")
+    params.sos_id = params.eos_id = sp.piece_to_id("<sos/eos>")
     params.vocab_size = sp.get_piece_size()
 
     logging.info(params)
@@ -1052,7 +1185,7 @@ def main():
     test_dl = [test_clean_dl, test_other_dl]
 
     for test_set, test_dl in zip(test_sets, test_dl):
-        results_dict = decode_dataset(
+        results_dict, sentences = decode_dataset(
             dl=test_dl,
             params=params,
             model=model,
@@ -1077,6 +1210,19 @@ def main():
                 test_set_name=test_set,
                 results_dict=results_dict,
             )
+
+        # calculate PER only when ref and hyp sentences not empty
+        if sentences["per_ref"] and sentences["per_hyp"]:
+            #### PER
+            punctuation_marks = [".", ",", "?"]
+            dper_obj = DatasetPunctuationErrorRate(sentences["per_ref"], sentences["per_hyp"], punctuation_marks)
+            dper_obj.compute()
+            dper_obj.print() 
+        if sentences["f1_ref"] and sentences["f1_hyp"]:
+            punct_precision, punct_recall, punct_f1 = compute_f1_metric(sentences["f1_ref"], sentences["f1_hyp"], "punct")
+            casing_precision, casing_recall, casing_f1 = compute_f1_metric(sentences["f1_ref"], sentences["f1_hyp"], "casing")
+            print(f"\n[PUNCT]:\npunct_f1:{punct_f1:.4f}, punct_precision:{punct_precision:.4f}, punct_recall:{punct_recall:.4f}")
+            print(f"[CASING]:\ncasing_f1:{casing_f1:.4f}, casing_precision:{casing_precision:.4f}, casing_recall:{casing_recall:.4f}\n")
 
     logging.info("Done!")
 

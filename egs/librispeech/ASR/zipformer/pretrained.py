@@ -125,6 +125,7 @@ from beam_search import (
 from export import num_tokens
 from torch.nn.utils.rnn import pad_sequence
 from train import add_model_arguments, get_model, get_params
+from icefall.utils import str2bool
 
 
 def get_parser():
@@ -224,6 +225,13 @@ def get_parser():
         """,
     )
 
+    parser.add_argument(
+        "--enable-distillation",
+        type=str2bool,
+        default=True,
+        help="Whether to eanble distillation.",
+    )
+
     add_model_arguments(parser)
 
     return parser
@@ -319,7 +327,9 @@ def main():
     feature_lengths = torch.tensor(feature_lengths, device=device)
 
     # model forward
-    encoder_out, encoder_out_lens = model.forward_encoder(features, feature_lengths)
+    # encoder_out, encoder_out_lens = model.forward_encoder(features, feature_lengths)
+    layer_results, encoder_out_lens = model.forward_encoder(features, feature_lengths)
+    encoder_out = layer_results[-1]
 
     hyps = []
     msg = f"Using {params.method}"

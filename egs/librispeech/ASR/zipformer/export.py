@@ -255,6 +255,13 @@ def get_parser():
         help="The context size in the decoder. 1 means bigram; 2 means tri-gram",
     )
 
+    parser.add_argument(
+        "--enable-distillation",
+        type=str2bool,
+        default=True,
+        help="Whether to eanble distillation.",
+    )
+
     add_model_arguments(parser)
 
     return parser
@@ -281,7 +288,10 @@ class EncoderModel(nn.Module):
         src_key_padding_mask = make_pad_mask(x_lens)
         x = x.permute(1, 0, 2)  # (N, T, C) -> (T, N, C)
 
-        encoder_out, encoder_out_lens = self.encoder(x, x_lens, src_key_padding_mask)
+        # encoder_out, encoder_out_lens = self.encoder(x, x_lens, src_key_padding_mask)
+        layer_results, encoder_out_lens = self.encoder(x, x_lens, src_key_padding_mask)
+        encoder_out = layer_results[-1]
+        
         encoder_out = encoder_out.permute(1, 0, 2)  # (T, N, C) ->(N, T, C)
 
         return encoder_out, encoder_out_lens

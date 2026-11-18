@@ -50,6 +50,20 @@ It supports training with:
   - transducer loss & ctc loss, with `--use-transducer True --use-ctc True`
   - ctc loss & attention decoder loss, no transducer loss,
     with `--use-transducer False --use-ctc True --use-attention-decoder True`
+
+# For distillation training:
+python ./zipformer/train.py \
+    --world-size 4 \
+    --num-epochs 30 \
+    --start-epoch 1 \
+    --use-fp16 1 \
+    --exp-dir zipformer/exp \
+    --full-libri 1 \
+    --max-duration 1200 \
+    --bpe-model data/lang_bpe_756/bpe.model \
+    --manifest-dir ./data/vq_fbank_layer36_cb16 \
+    --spec-aug-time-warp-factor -1  \
+    --enable-distillation True
 """
 
 
@@ -71,7 +85,8 @@ from asr_datamodule import LibriSpeechAsrDataModule
 from attention_decoder import AttentionDecoderModel
 from decoder import Decoder
 from joiner import Joiner
-from lhotse.cut import Cut
+from lhotse.cut import Cut, MonoCut
+from lhotse.dataset.collation import collate_custom_field
 from lhotse.dataset.sampling.base import CutSampler
 from lhotse.utils import fix_random_seed
 from model import AsrModel
@@ -445,14 +460,14 @@ def get_parser():
     parser.add_argument(
         "--ctc-loss-scale",
         type=float,
-        default=0.2,
+        default=0.1,
         help="Scale for CTC loss.",
     )
 
     parser.add_argument(
         "--attention-decoder-loss-scale",
         type=float,
-        default=0.8,
+        default=0.9,
         help="Scale for attention-decoder loss.",
     )
 
@@ -528,6 +543,20 @@ def get_parser():
         help="Whether to use bf16 in AMP.",
     )
 
+    parser.add_argument(
+        "--codebook-loss-scale",
+        type=float,
+        default=0.1,
+        help="The scale of codebook loss.",
+    )
+
+    parser.add_argument(
+        "--enable-distillation",
+        type=str2bool,
+        default=True,
+        help="Whether to eanble distillation.",
+    )
+
     add_model_arguments(parser)
 
     return parser
@@ -592,6 +621,12 @@ def get_params() -> AttributeDict:
             "label_smoothing": 0.1,
             "warm_step": 2000,
             "env_info": get_env_info(),
+            # parameters for distillation with codebook indexes.
+            "distillation_layer": 3, #5,  # 0-based index
+            # Since output rate of hubert is 50, while that of encoder is 8,
+            # two successive codebook_index are concatenated together.
+            # Detailed in function Transducer::concat_sucessive_codebook_indexes
+            "num_codebooks": 16,  # used to construct distillation loss
         }
     )
 
@@ -638,6 +673,9 @@ def get_encoder_model(params: AttributeDict) -> nn.Module:
         causal=params.causal,
         chunk_size=_to_int_tuple(params.chunk_size),
         left_context_frames=_to_int_tuple(params.left_context_frames),
+        middle_output_layer=params.distillation_layer
+        if params.enable_distillation
+        else None,
     )
     return encoder
 
@@ -713,6 +751,7 @@ def get_model(params: AttributeDict) -> nn.Module:
         use_transducer=params.use_transducer,
         use_ctc=params.use_ctc,
         use_attention_decoder=params.use_attention_decoder,
+        num_codebooks=params.num_codebooks if params.enable_distillation else 0,
     )
     return model
 
@@ -832,6 +871,15 @@ def save_checkpoint(
         best_valid_filename = params.exp_dir / "best-valid-loss.pt"
         copyfile(src=filename, dst=best_valid_filename)
 
+def extract_codebook_indexes(batch):
+    cuts = batch["supervisions"]["cut"]
+    # -100 is identical to ignore_value in CE loss computation.
+    cuts_pre_mixed = [c if isinstance(c, MonoCut) else c.tracks[0].cut for c in cuts]
+    # print(cuts_pre_mixed)
+    codebook_indexes, codebook_indexes_lens = collate_custom_field(
+        cuts_pre_mixed, "codebook_indexes", pad_value=-100
+    )
+    return codebook_indexes, codebook_indexes_lens
 
 def compute_loss(
     params: AttributeDict,
@@ -874,14 +922,21 @@ def compute_loss(
     y = sp.encode(texts, out_type=int)
     y = k2.RaggedTensor(y)
 
+    if is_training and params.enable_distillation:
+        codebook_indexes, _ = extract_codebook_indexes(batch)
+        codebook_indexes = codebook_indexes.to(device)
+    else:
+        codebook_indexes = None
+
     with torch.set_grad_enabled(is_training):
-        simple_loss, pruned_loss, ctc_loss, attention_decoder_loss = model(
+        simple_loss, pruned_loss, ctc_loss, attention_decoder_loss, codebook_loss = model(
             x=feature,
             x_lens=feature_lens,
             y=y,
             prune_range=params.prune_range,
             am_scale=params.am_scale,
             lm_scale=params.lm_scale,
+            codebook_indexes = codebook_indexes,
         )
 
         loss = 0.0
@@ -908,6 +963,10 @@ def compute_loss(
         if params.use_attention_decoder:
             loss += params.attention_decoder_loss_scale * attention_decoder_loss
 
+        if is_training and params.enable_distillation:
+            assert codebook_loss is not None
+            loss += params.codebook_loss_scale * codebook_loss
+
     assert loss.requires_grad == is_training
 
     info = MetricsTracker()
@@ -924,6 +983,8 @@ def compute_loss(
         info["ctc_loss"] = ctc_loss.detach().cpu().item()
     if params.use_attention_decoder:
         info["attn_decoder_loss"] = attention_decoder_loss.detach().cpu().item()
+    if is_training and params.enable_distillation:
+        info["codebook_loss"] = codebook_loss.detach().cpu().item()
 
     return loss, info
 
@@ -1180,6 +1241,11 @@ def run(rank, world_size, args):
     """
     params = get_params()
     params.update(vars(args))
+
+    if args.enable_distillation:
+        # Note: it's better to set --spec-aug-time-warpi-factor=-1
+        # when doing distillation with vq.
+        assert args.spec_aug_time_warp_factor < 1
 
     fix_random_seed(params.seed)
     if world_size > 1:

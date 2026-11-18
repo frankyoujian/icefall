@@ -40,6 +40,20 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--vq-fbank",
+        type=Path,
+        default="pruned_transducer_stateless6/exp/",
+        help="The experiment dir",
+    )
+
+    parser.add_argument(
+        "--fbank",
+        type=Path,
+        default="pruned_transducer_stateless6/exp/",
+        help="The experiment dir",
+    )
+
+    parser.add_argument(
         "--use-extracted-codebook",
         type=str2bool,
         default=False,

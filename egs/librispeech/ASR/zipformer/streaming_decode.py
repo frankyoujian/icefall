@@ -35,6 +35,7 @@ import logging
 import math
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from collections import defaultdict
 
 import k2
 import numpy as np
@@ -44,6 +45,7 @@ from asr_datamodule import LibriSpeechAsrDataModule
 from decode_stream import DecodeStream
 from kaldifeat import Fbank, FbankOptions
 from lhotse import CutSet, set_caching_enabled
+from punct_er import DatasetPunctuationErrorRate
 from streaming_beam_search import (
     fast_beam_search_one_best,
     greedy_search,
@@ -200,6 +202,20 @@ def get_parser():
         type=str2bool,
         default=False,
         help="""Skip scoring, but still save the ASR output (for eval sets)."""
+    )
+
+    parser.add_argument(
+        "--enable-distillation",
+        type=str2bool,
+        default=False,
+        help="Whether to eanble distillation.",
+    )
+
+    parser.add_argument(
+        "--with-pc",
+        type=str2bool,
+        default=True,
+        help="The target transcripts is with punct and casing or not.",
     )
 
 
@@ -538,7 +554,7 @@ def decode_dataset(
     model: nn.Module,
     sp: spm.SentencePieceProcessor,
     decoding_graph: Optional[k2.Fsa] = None,
-) -> Dict[str, List[Tuple[List[str], List[str]]]]:
+) -> Tuple[Dict[str, List[Tuple[List[str], List[str]]]], Dict[str,List[str]]]:
     """Decode dataset.
 
     Args:
@@ -574,6 +590,9 @@ def decode_dataset(
     decode_results = []
     # Contain decode streams currently running.
     decode_streams = []
+    sentences = defaultdict(list)
+    per_ref_sentences = []
+    per_hyp_sentences = []
     for num, cut in enumerate(cuts):
         # each utterance has a DecodeStream.
         initial_states = get_init_states(model=model, batch_size=1, device=device)
@@ -608,18 +627,39 @@ def decode_dataset(
 
         decode_streams.append(decode_stream)
 
+        def remove_punc_to_upper(text: str) -> str:
+            text = text.replace("‘", "'")
+            text = text.replace("’", "'")
+            tokens = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'")
+            s_list = [x.upper() if x in tokens else " " for x in text]
+            s = " ".join("".join(s_list).split()).strip()
+            return s
+
         while len(decode_streams) >= params.num_decode_streams:
             finished_streams = decode_one_chunk(
                 params=params, model=model, decode_streams=decode_streams
             )
             for i in sorted(finished_streams, reverse=True):
-                decode_results.append(
-                    (
-                        decode_streams[i].id,
-                        decode_streams[i].ground_truth.split(),
-                        sp.decode(decode_streams[i].decoding_result()).split(),
+                if params.with_pc:
+                    # print(f"-------------> ground_truth:{decode_streams[i].ground_truth}")
+                    # print(f"-------------> decoding_result:{sp.decode(decode_streams[i].decoding_result())}")
+                    decode_results.append(
+                        (
+                            decode_streams[i].id,
+                            decode_streams[i].ground_truth.split(),
+                            sp.decode(decode_streams[i].decoding_result()).split(),
+                        )
                     )
-                )
+                    per_ref_sentences.append(decode_streams[i].ground_truth)
+                    per_hyp_sentences.append(sp.decode(decode_streams[i].decoding_result()))
+                else:
+                    decode_results.append(
+                        (
+                            decode_streams[i].id,
+                            remove_punc_to_upper(decode_streams[i].ground_truth).split(),
+                            remove_punc_to_upper(sp.decode(decode_streams[i].decoding_result())).split(),
+                        )
+                    )                    
                 del decode_streams[i]
 
         if num % log_interval == 0:
@@ -631,13 +671,24 @@ def decode_dataset(
             params=params, model=model, decode_streams=decode_streams
         )
         for i in sorted(finished_streams, reverse=True):
-            decode_results.append(
-                (
-                    decode_streams[i].id,
-                    decode_streams[i].ground_truth.split(),
-                    sp.decode(decode_streams[i].decoding_result()).split(),
+            if params.with_pc:
+                decode_results.append(
+                    (
+                        decode_streams[i].id,
+                        decode_streams[i].ground_truth.split(),
+                        sp.decode(decode_streams[i].decoding_result()).split(),
+                    )
                 )
-            )
+                per_ref_sentences.append(decode_streams[i].ground_truth)
+                per_hyp_sentences.append(sp.decode(decode_streams[i].decoding_result()))
+            else:
+                decode_results.append(
+                    (
+                        decode_streams[i].id,
+                        remove_punc_to_upper(decode_streams[i].ground_truth).split(),
+                        remove_punc_to_upper(sp.decode(decode_streams[i].decoding_result())).split(),
+                    )
+                )                  
             del decode_streams[i]
 
     if params.decoding_method == "greedy_search":
@@ -652,7 +703,10 @@ def decode_dataset(
         key = f"num_active_paths_{params.num_active_paths}"
     else:
         raise ValueError(f"Unsupported decoding method: {params.decoding_method}")
-    return {key: decode_results}
+
+    sentences["per_ref"] = per_ref_sentences
+    sentences["per_hyp"] = per_hyp_sentences
+    return {key: decode_results}, sentences
 
 
 def save_asr_output(
@@ -872,7 +926,7 @@ def main():
     test_cuts = [test_clean_cuts, test_other_cuts]
 
     for test_set, test_cut in zip(test_sets, test_cuts):
-        results_dict = decode_dataset(
+        results_dict, sentences = decode_dataset(
             cuts=test_cut,
             params=params,
             model=model,
@@ -894,6 +948,14 @@ def main():
                 test_set_name=test_set,
                 results_dict=results_dict,
             )
+
+        # calculate PER only when ref and hyp sentences not empty
+        if sentences["per_ref"] and sentences["per_hyp"]:
+            #### PER
+            punctuation_marks = [".", ",", "?"]
+            dper_obj = DatasetPunctuationErrorRate(sentences["per_ref"], sentences["per_hyp"], punctuation_marks)
+            dper_obj.compute()
+            dper_obj.print() 
 
     logging.info("Done!")
 

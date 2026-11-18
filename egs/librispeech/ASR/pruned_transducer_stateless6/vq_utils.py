@@ -31,6 +31,8 @@ import torch.multiprocessing as mp
 
 from icefall import is_module_available
 
+from tqdm import tqdm
+
 if not is_module_available("multi_quantization"):
     raise ValueError("Please 'pip install multi_quantization' first.")
 
@@ -58,6 +60,7 @@ class CodebookIndexExtractor:
     def __init__(self, params: AttributeDict):
         self.params = params
         params.subsets = ["clean-100"]
+        # params.subsets = []
         if self.params.full_libri:
             self.params.subsets += ["clean-360", "other-500"]
 
@@ -80,11 +83,13 @@ class CodebookIndexExtractor:
 
         # It's doesn't matter whether ori_manifest_dir is str or Path.
         # Set it to Path to be consistent.
-        self.ori_manifest_dir = Path("./data/fbank/")
-        self.dst_manifest_dir = Path(
-            f"./data/vq_fbank_layer"
-            + f"{self.params.embedding_layer}_cb{self.params.num_codebooks}/"
-        )
+        # self.ori_manifest_dir = Path("./data/fbank/")
+        self.ori_manifest_dir = self.params.fbank
+        # self.dst_manifest_dir = Path(
+        #     f"./data/vq_fbank_layer"
+        #     + f"{self.params.embedding_layer}_cb{self.params.num_codebooks}/"
+        # )
+        self.dst_manifest_dir = self.params.vq_fbank
 
         self.dst_manifest_dir.mkdir(parents=True, exist_ok=True)
 
@@ -247,22 +252,27 @@ class CodebookIndexExtractor:
             dst_vq_manifest_path = (
                 self.dst_manifest_dir / f"librispeech_cuts_train-{subset}.jsonl.gz"
             )
+            print("loading cuts vq")
             cuts_vq = load_manifest(vq_manifest_path)
+            print("loading cuts ori")
             cuts_ori = load_manifest(ori_manifest_path)
             assert len(cuts_vq) == len(cuts_ori), "Cuts should have the same length!"
 
             if set(cuts_vq.ids) == set(cuts_ori.ids):
+                print("if ------------------->")
                 # IDs match exactly
                 cuts_vq = cuts_vq.sort_like(cuts_ori)
                 for cut_idx, (cut_vq, cut_ori) in enumerate(zip(cuts_vq, cuts_ori)):
                     assert cut_vq.id == cut_ori.id, (cut_vq.id, cut_ori.id)
                     cut_ori.codebook_indexes = cut_vq.codebook_indexes
             else:
+                print("else ------------------->")
                 # in case of ID mismatch, remap them
                 # get the mapping between audio and cut ID
                 logging
                 ori_id_map = {}
-                for id in cuts_ori.ids:
+                # for id in cuts_ori.ids:
+                for id in tqdm(cuts_ori.ids, desc=f"Processing {subset} orig cuts"):
                     # some text normalization
                     if "sp" in id:
                         clean_id = "-".join(id.split("-")[:3]) + "_" + id.split("_")[-1]
@@ -270,7 +280,8 @@ class CodebookIndexExtractor:
                         clean_id = "-".join(id.split("-")[:3])
                     ori_id_map[clean_id] = id
 
-                for id in cuts_vq.ids:
+                # for id in cuts_vq.ids:
+                for id in tqdm(cuts_vq.ids, desc=f"Processing {subset} vq cuts"):
                     if "sp" in id:
                         clean_id = "-".join(id.split("-")[:3]) + "_" + id.split("_")[-1]
                     else:
