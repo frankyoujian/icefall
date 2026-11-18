@@ -1,0 +1,353 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-11-18",
+  "interpretation": "Bounded recovered evidence; experiment names and first logged settings do not prove which checkpoint produced each published result.",
+  "logged_environment": {
+    "python": "3.10",
+    "torch": "2.0.1+cu117",
+    "k2": "1.24.3",
+    "lhotse": "1.26.0",
+    "base_commit": "cea0dbe7b1cd4d5b7512c7974e53034ef456dd70",
+    "dirty_worktree": true
+  },
+  "experiments": [
+    {
+      "directory": "zipformer/exp",
+      "source_log": "zipformer/exp/log/log-train-2025-01-06-12-42-19-0",
+      "settings": {
+        "world_size": 4,
+        "num_epochs": 30,
+        "bpe_model": "data/lang_bpe_500/bpe.model",
+        "vocab_size": 500,
+        "enable_distillation": true,
+        "codebook_loss_scale": 0.1,
+        "distillation_layer": 3,
+        "num_codebooks": 16,
+        "causal": false,
+        "chunk_size": "16,32,64,-1",
+        "left_context_frames": "64,128,256,-1",
+        "num_encoder_layers": "2,2,3,4,3,2",
+        "manifest_dir": "data/vq_fbank_layer36_cb16",
+        "max_duration": 1000,
+        "spec_aug_time_warp_factor": -1,
+        "use_transducer": true,
+        "use_ctc": false,
+        "use_attention_decoder": false,
+        "use_fp16": true
+      },
+      "log_timestamp": "2025-01-06 12:42:19",
+      "model_parameters": 71976147
+    },
+    {
+      "directory": "zipformer/exp_CTC_AED",
+      "source_log": "zipformer/exp_CTC_AED/log/log-train-2024-10-09-15-03-12-0",
+      "settings": {
+        "world_size": 4,
+        "num_epochs": 50,
+        "bpe_model": "data/lang_bpe_756/bpe.model",
+        "vocab_size": 756,
+        "enable_distillation": true,
+        "codebook_loss_scale": 0.1,
+        "distillation_layer": 3,
+        "num_codebooks": 16,
+        "causal": false,
+        "chunk_size": "16,32,64,-1",
+        "left_context_frames": "64,128,256,-1",
+        "num_encoder_layers": "2,2,3,4,3,2",
+        "manifest_dir": "data/vq_fbank_layer36_cb16",
+        "max_duration": 1000,
+        "spec_aug_time_warp_factor": -1,
+        "use_transducer": false,
+        "use_ctc": true,
+        "use_attention_decoder": true,
+        "use_fp16": true
+      },
+      "log_timestamp": "2024-10-09 15:03:12",
+      "model_parameters": 96808159
+    },
+    {
+      "directory": "zipformer/exp_KD_data_v0",
+      "source_log": "zipformer/exp_KD_data_v0/log/log-train-2024-10-19-11-31-54-0",
+      "settings": {
+        "world_size": 4,
+        "num_epochs": 50,
+        "bpe_model": "data/lang_bpe_500/bpe.model",
+        "vocab_size": 500,
+        "enable_distillation": true,
+        "codebook_loss_scale": 0.1,
+        "distillation_layer": 3,
+        "num_codebooks": 16,
+        "causal": false,
+        "chunk_size": "16,32,64,-1",
+        "left_context_frames": "64,128,256,-1",
+        "num_encoder_layers": "2,2,3,4,3,2",
+        "manifest_dir": "data/vq_fbank_layer36_cb16",
+        "max_duration": 1000,
+        "spec_aug_time_warp_factor": -1,
+        "use_transducer": true,
+        "use_ctc": false,
+        "use_attention_decoder": false,
+        "use_fp16": true
+      },
+      "log_timestamp": "2024-10-19 11:31:54",
+      "model_parameters": 71976147
+    },
+    {
+      "directory": "zipformer/exp_KD_data_v0_0.05fusionloss",
+      "source_log": "zipformer/exp_KD_data_v0_0.05fusionloss/log/log-train-2024-12-30-00-03-12-0",
+      "settings": {
+        "world_size": 4,
+        "num_epochs": 30,
+        "bpe_model": "data/lang_bpe_500/bpe.model",
+        "vocab_size": 500,
+        "enable_distillation": true,
+        "codebook_loss_scale": 0.05,
+        "distillation_layer": 3,
+        "num_codebooks": 16,
+        "causal": false,
+        "chunk_size": "16,32,64,-1",
+        "left_context_frames": "64,128,256,-1",
+        "num_encoder_layers": "2,2,3,4,3,2",
+        "manifest_dir": "data/vq_fbank_layer36_cb16",
+        "max_duration": 1000,
+        "spec_aug_time_warp_factor": -1,
+        "use_transducer": true,
+        "use_ctc": false,
+        "use_attention_decoder": false,
+        "use_fp16": true
+      },
+      "log_timestamp": "2024-12-30 00:03:12",
+      "model_parameters": 71976147
+    },
+    {
+      "directory": "zipformer/exp_KD_data_v0_0.2fusionloss",
+      "source_log": "zipformer/exp_KD_data_v0_0.2fusionloss/log/log-train-2024-12-28-00-03-05-0",
+      "settings": {
+        "world_size": 4,
+        "num_epochs": 30,
+        "bpe_model": "data/lang_bpe_500/bpe.model",
+        "vocab_size": 500,
+        "enable_distillation": true,
+        "codebook_loss_scale": 0.2,
+        "distillation_layer": 3,
+        "num_codebooks": 16,
+        "causal": false,
+        "chunk_size": "16,32,64,-1",
+        "left_context_frames": "64,128,256,-1",
+        "num_encoder_layers": "2,2,3,4,3,2",
+        "manifest_dir": "data/vq_fbank_layer36_cb16",
+        "max_duration": 1000,
+        "spec_aug_time_warp_factor": -1,
+        "use_transducer": true,
+        "use_ctc": false,
+        "use_attention_decoder": false,
+        "use_fp16": true
+      },
+      "log_timestamp": "2024-12-28 00:03:05",
+      "model_parameters": 71976147
+    },
+    {
+      "directory": "zipformer/exp_KD_data_v1",
+      "source_log": "zipformer/exp_KD_data_v1/log/log-train-2024-10-11-17-32-03-0",
+      "settings": {
+        "world_size": 4,
+        "num_epochs": 50,
+        "bpe_model": "data/lang_bpe_756/bpe.model",
+        "vocab_size": 756,
+        "enable_distillation": true,
+        "codebook_loss_scale": 0.1,
+        "distillation_layer": 3,
+        "num_codebooks": 16,
+        "causal": false,
+        "chunk_size": "16,32,64,-1",
+        "left_context_frames": "64,128,256,-1",
+        "num_encoder_layers": "2,2,3,4,3,2",
+        "manifest_dir": "data/vq_fbank_layer36_cb16",
+        "max_duration": 1000,
+        "spec_aug_time_warp_factor": -1,
+        "use_transducer": true,
+        "use_ctc": false,
+        "use_attention_decoder": false,
+        "use_fp16": true
+      },
+      "log_timestamp": "2024-10-11 17:32:03",
+      "model_parameters": 72501203
+    },
+    {
+      "directory": "zipformer/exp_KD_streaming_data_v0",
+      "source_log": "zipformer/exp_KD_streaming_data_v0/log/log-train-2024-10-22-17-53-01-0",
+      "settings": {
+        "world_size": 4,
+        "num_epochs": 50,
+        "bpe_model": "data/lang_bpe_500/bpe.model",
+        "vocab_size": 500,
+        "enable_distillation": true,
+        "codebook_loss_scale": 0.1,
+        "distillation_layer": 3,
+        "num_codebooks": 16,
+        "causal": true,
+        "chunk_size": "16,32,64,-1",
+        "left_context_frames": "64,128,256,-1",
+        "num_encoder_layers": "2,2,3,4,3,2",
+        "manifest_dir": "data/vq_fbank_layer36_cb16",
+        "max_duration": 1000,
+        "spec_aug_time_warp_factor": -1,
+        "use_transducer": true,
+        "use_ctc": false,
+        "use_attention_decoder": false,
+        "use_fp16": true
+      },
+      "log_timestamp": "2024-10-22 17:53:01",
+      "model_parameters": 72538067
+    },
+    {
+      "directory": "zipformer/exp_noKD_nonStreaming_data_v0",
+      "source_log": "zipformer/exp_noKD_nonStreaming_data_v0/log/log-train-2024-10-25-17-48-53-0",
+      "settings": {
+        "world_size": 4,
+        "num_epochs": 50,
+        "bpe_model": "data/lang_bpe_500/bpe.model",
+        "vocab_size": 500,
+        "enable_distillation": false,
+        "codebook_loss_scale": 0.1,
+        "distillation_layer": 3,
+        "num_codebooks": 16,
+        "causal": false,
+        "chunk_size": "16,32,64,-1",
+        "left_context_frames": "64,128,256,-1",
+        "num_encoder_layers": "2,2,3,4,3,2",
+        "manifest_dir": "data/vq_fbank_layer36_cb16",
+        "max_duration": 1000,
+        "spec_aug_time_warp_factor": 80,
+        "use_transducer": true,
+        "use_ctc": false,
+        "use_attention_decoder": false,
+        "use_fp16": true
+      },
+      "log_timestamp": "2024-10-25 17:48:53",
+      "model_parameters": 65549011
+    },
+    {
+      "directory": "zipformer/exp_noKD_streaming_data_v0",
+      "source_log": "zipformer/exp_noKD_streaming_data_v0/log/log-train-2024-10-27-22-15-05-2",
+      "settings": {
+        "world_size": 4,
+        "num_epochs": 50,
+        "bpe_model": "data/lang_bpe_500/bpe.model",
+        "vocab_size": 500,
+        "enable_distillation": false,
+        "codebook_loss_scale": 0.1,
+        "distillation_layer": 3,
+        "num_codebooks": 16,
+        "causal": true,
+        "chunk_size": "16,32,64,-1",
+        "left_context_frames": "64,128,256,-1",
+        "num_encoder_layers": "2,2,3,4,3,2",
+        "manifest_dir": "data/vq_fbank_layer36_cb16",
+        "max_duration": 1000,
+        "spec_aug_time_warp_factor": 80,
+        "use_transducer": true,
+        "use_ctc": false,
+        "use_attention_decoder": false,
+        "use_fp16": true
+      },
+      "log_timestamp": "2024-10-27 22:15:05",
+      "model_parameters": 66110931
+    }
+  ],
+  "current_training_manifest_audit": {
+    "root": "data/vq_fbank_layer36_cb16",
+    "total_cuts": 768372,
+    "counts": {
+      "train-clean-100": 78123,
+      "train-clean-360": 286212,
+      "train-other-500": 404037
+    },
+    "all_array_ranks": [
+      2
+    ],
+    "all_last_axis_dimensions": [
+      8
+    ],
+    "metadata_frame_shift_seconds": 0.02,
+    "sample_hdf5_array": {
+      "shape": [
+        689,
+        8
+      ],
+      "dtype": "uint8",
+      "scope": "First clean-100 manifest item; not a full HDF5 content audit."
+    },
+    "student_label_pairing": "[N,T_teacher,8] -> [N,T_student,16], with teacher time truncated to 2*T_student as needed",
+    "caveat": "Folder cb16 is not evidence of 16 teacher indexes per frame. This audit describes the current artifacts, not all historical artifacts or the paper table provenance."
+  },
+  "validation": {
+    "source_integrity": {
+      "status": "passed",
+      "unchanged_remote_candidate_files": 28,
+      "main_source_sha256_checks": 11
+    },
+    "syntax_and_scoring": {
+      "status": "passed",
+      "ast_parsed_main_files": 11,
+      "checks": [
+        "traditional WER normalization",
+        "case-sensitive WER C",
+        "verbatim WER PC",
+        "zero-normalized-WER F1 selection",
+        "title-case convention",
+        "no active Whisper override"
+      ]
+    },
+    "per_cpu_smoke": {
+      "status": "passed",
+      "reference": "Hello , world .",
+      "cases": [
+        {
+          "hypothesis": "Hello , world .",
+          "per": 0.0
+        },
+        {
+          "hypothesis": "Hello world .",
+          "per": 0.5
+        },
+        {
+          "hypothesis": "Hello ? world .",
+          "per": 0.5
+        }
+      ]
+    },
+    "core_cpu_smoke": {
+      "status": "passed",
+      "input_shape": [
+        2,
+        160,
+        80
+      ],
+      "input_lengths": [
+        160,
+        151
+      ],
+      "output_lengths": [
+        38,
+        36
+      ],
+      "variants": [
+        "no KD, non-causal",
+        "KD, non-causal",
+        "KD, causal"
+      ],
+      "parameter_counts": [
+        65549011,
+        71976147,
+        72538067
+      ],
+      "kd_checks": [
+        "8->16 index pairing",
+        "finite codebook loss",
+        "finite gradient into intermediate representation"
+      ],
+      "scope": "Executed unchanged main core on AI server with historical virtualenv; no full RNN-T loss/training/checkpoint export/publication-score reproduction."
+    }
+  }
+}

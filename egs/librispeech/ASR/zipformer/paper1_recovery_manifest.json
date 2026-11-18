@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "recovered_on": "2026-11-18",
+  "source_repository": "/data1/jianyou/K2/icefall",
+  "source_base_commit": "cea0dbe7b1cd4d5b7512c7974e53034ef456dd70",
+  "source_base_subject": "fix gigaspeech_prepare.sh (#1734)",
+  "method": "Read-only SSH snapshot of candidate source files; SHA-256 checked locally. No remote source changes. Main core preserved; later unrelated inference hunks filtered explicitly.",
+  "main_source_files": 11,
+  "prototype_patch": {
+    "path": "egs/librispeech/ASR/zipformer/paper1_stateless6_prototype.patch",
+    "sha256": "83c5c8c9443a3f0fa14ba413244c86da781865dc77b4bb3e6b0b78896974a330",
+    "file_count": 7
+  },
+  "files": [
+    {
+      "path": "egs/librispeech/ASR/decode.sh",
+      "remote_sha256": "4270ba2138e84c88d6dcccb849caecd1f8abbb28738de7a2d9dd51f82ee5e477",
+      "disposition": "excluded",
+      "reason": "Stale launcher uses --with-pc against current non-streaming --wer-type; avg=21 differs from paper. LM epoch=9 is consistent with ten epochs under zero-based LM training."
+    },
+    {
+      "path": "egs/librispeech/ASR/distillation_with_hubert.sh",
+      "remote_sha256": "2f8041bb1c851210a866ebe7dada28bded56dba1c6ce6d3ac981df60d680eefc",
+      "disposition": "archived-prototype",
+      "reason": "Captured as a patch against the source base; not applied to the main recipe."
+    },
+    {
+      "path": "egs/librispeech/ASR/prepare.sh",
+      "remote_sha256": "a4f4c15c08a37d0737e376a6cdee42bb126961247912391016aab5da9c6040d2",
+      "disposition": "excluded",
+      "reason": "Comment-only vocabulary/normalization experiments; no active formatted-transcript preparation implementation."
+    },
+    {
+      "path": "egs/librispeech/ASR/prepare_lm.sh",
+      "remote_sha256": "c6cd8971c702d64b016504b562c0d419f1b99999aaae9435f5a621c36568c72d",
+      "disposition": "excluded",
+      "reason": "Incomplete 756-token and N-gram experiment; not the paper RNN-LM recipe."
+    },
+    {
+      "path": "egs/librispeech/ASR/pruned_transducer_stateless2/scaling.py",
+      "remote_sha256": "e5bb24857550fb82d8389afa2766798fa55fc1480aec4bca08cdd2fb2e8a32e0",
+      "disposition": "excluded",
+      "reason": "Unused AMP imports and whitespace in a shared file."
+    },
+    {
+      "path": "egs/librispeech/ASR/pruned_transducer_stateless6/decode.py",
+      "remote_sha256": "4225dbfd33adfaa43a4068e6a7907f4f07feb21ca431a7f94b73631712a3c9e4",
+      "disposition": "archived-prototype",
+      "reason": "Captured as a patch against the source base; not applied to the main recipe."
+    },
+    {
+      "path": "egs/librispeech/ASR/pruned_transducer_stateless6/extract_codebook_index.py",
+      "remote_sha256": "e1a97aca031bf41f4abffdf437646a1dee00cc139d68d6501f14e5055893c608",
+      "disposition": "main-verbatim",
+      "reason": "Exact captured remote bytes.",
+      "committed_sha256": "e1a97aca031bf41f4abffdf437646a1dee00cc139d68d6501f14e5055893c608"
+    },
+    {
+      "path": "egs/librispeech/ASR/pruned_transducer_stateless6/model_zipformer.py",
+      "remote_sha256": "f49986bb6e80d0bb7d429103e323afb144d02f6fa2306e6cd96cfc5a0bcdf994",
+      "disposition": "archived-prototype",
+      "reason": "Captured as a patch against the source base; not applied to the main recipe."
+    },
+    {
+      "path": "egs/librispeech/ASR/pruned_transducer_stateless6/scaling_zipformer.py",
+      "remote_sha256": "2018c857c1196ee2d5617f4a2d7edf6394df8fcf3c05cd9a06a3288a685a7a2b",
+      "disposition": "archived-prototype",
+      "reason": "Captured as a patch against the source base; not applied to the main recipe."
+    },
+    {
+      "path": "egs/librispeech/ASR/pruned_transducer_stateless6/subsampling.py",
+      "remote_sha256": "194cdc76976dd5cbb36f04e1eea84f95fa0858cd565965bf962a39fa079ac7db",
+      "disposition": "archived-prototype",
+      "reason": "Captured as a patch against the source base; not applied to the main recipe."
+    },
+    {
+      "path": "egs/librispeech/ASR/pruned_transducer_stateless6/train.py",
+      "remote_sha256": "e1409ab0c25646becdec1e465dbb74c8c7376d36df7ef091788618ef3c436ab8",
+      "disposition": "archived-prototype",
+      "reason": "Captured as a patch against the source base; not applied to the main recipe."
+    },
+    {
+      "path": "egs/librispeech/ASR/pruned_transducer_stateless6/vq_utils.py",
+      "remote_sha256": "bd5b9e4b486263a62d7038cacc86cf419cededdf038ae4fa9cf2ccd32a93a05b",
+      "disposition": "main-verbatim",
+      "reason": "Exact captured remote bytes.",
+      "committed_sha256": "bd5b9e4b486263a62d7038cacc86cf419cededdf038ae4fa9cf2ccd32a93a05b"
+    },
+    {
+      "path": "egs/librispeech/ASR/pruned_transducer_stateless6/zipformer.py",
+      "remote_sha256": "202465d03aef077f47763fde00e171831571451f5883118dde4ab05a521bc9f2",
+      "disposition": "archived-prototype",
+      "reason": "Captured as a patch against the source base; not applied to the main recipe."
+    },
+    {
+      "path": "egs/librispeech/ASR/result.tx",
+      "remote_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "disposition": "excluded",
+      "reason": "Empty scratch file."
+    },
+    {
+      "path": "egs/librispeech/ASR/test_sp.py",
+      "remote_sha256": "b16f48e03858f5598225ee3470513cdba093cccee32e5a022d994228fcce7a38",
+      "disposition": "excluded",
+      "reason": "Scratch SentencePiece whitespace probe."
+    },
+    {
+      "path": "egs/librispeech/ASR/zipformer/ctc_decode.py",
+      "remote_sha256": "030592e3ba7765430f49fbfd02c439d5b74b6e3305ace7d116a363589b7b0e6b",
+      "disposition": "main-curated",
+      "reason": "Kept KD flag and final-encoder-output adapter; omitted hardcoded 756-token vocabulary experiment, retaining upstream lexicon-derived size.",
+      "committed_sha256": "749490a5079a2be4f7c263c67426a92d4990c178981634e8e619dfbea74055c0"
+    },
+    {
+      "path": "egs/librispeech/ASR/zipformer/decode.py",
+      "remote_sha256": "3aab845c46abbdebcb6659ab36430590d0b2ba66dc3d14307b009ac9f845f24b",
+      "disposition": "main-curated",
+      "reason": "Removed later Whisper import/helper/model loading/decoding/hypothesis override and unrelated ngram debug print; kept Zipformer decoding and formatted-text metrics.",
+      "committed_sha256": "11d1d632ba10f5a5b61e735248a761b506b045822f39834732862f35c6878f90"
+    },
+    {
+      "path": "egs/librispeech/ASR/zipformer/export.py",
+      "remote_sha256": "d06229ab4ed05c305ca79f65f1e15b4652a37ef691a5e8ed16b14638b867d3ba",
+      "disposition": "main-verbatim",
+      "reason": "Exact captured remote bytes.",
+      "committed_sha256": "d06229ab4ed05c305ca79f65f1e15b4652a37ef691a5e8ed16b14638b867d3ba"
+    },
+    {
+      "path": "egs/librispeech/ASR/zipformer/model.py",
+      "remote_sha256": "7fa8529ab3c1dd816b3ed144e264eb5f38090422c322586f5da67cf59665497a",
+      "disposition": "main-verbatim",
+      "reason": "Exact captured remote bytes.",
+      "committed_sha256": "7fa8529ab3c1dd816b3ed144e264eb5f38090422c322586f5da67cf59665497a"
+    },
+    {
+      "path": "egs/librispeech/ASR/zipformer/pretrained.py",
+      "remote_sha256": "5fd85427ed862cbb9a885521e0c223d415bbe6684420d7e62d687e11d93be702",
+      "disposition": "main-curated",
+      "reason": "Kept KD flag, str2bool import and final-encoder-output adapter; omitted unrelated imports and stdout-only logging change.",
+      "committed_sha256": "791dcb4b109ad0bad71a2dfed9acc3a28468e2b132588902bb08422ac53602e9"
+    },
+    {
+      "path": "egs/librispeech/ASR/zipformer/punct_er.py",
+      "remote_sha256": "7ff99e177b833b4fb5a9e4b0db2a78a5f95f3ee447c2697ca9c6dd08cb83568e",
+      "disposition": "main-verbatim",
+      "reason": "Exact captured remote bytes.",
+      "committed_sha256": "7ff99e177b833b4fb5a9e4b0db2a78a5f95f3ee447c2697ca9c6dd08cb83568e"
+    },
+    {
+      "path": "egs/librispeech/ASR/zipformer/streaming_decode.py",
+      "remote_sha256": "22f2eb7c4690e445fd18e9c31d3a7e88ca1179a9b59b699bb4b9ab1a7a17a5e7",
+      "disposition": "main-verbatim",
+      "reason": "Exact captured remote bytes.",
+      "committed_sha256": "22f2eb7c4690e445fd18e9c31d3a7e88ca1179a9b59b699bb4b9ab1a7a17a5e7"
+    },
+    {
+      "path": "egs/librispeech/ASR/zipformer/train.py",
+      "remote_sha256": "6697883482ca4770660768c29dcb9fa3e0201dbd699337aa8e7ba9e27eea6500",
+      "disposition": "main-verbatim",
+      "reason": "Exact captured remote bytes.",
+      "committed_sha256": "6697883482ca4770660768c29dcb9fa3e0201dbd699337aa8e7ba9e27eea6500"
+    },
+    {
+      "path": "egs/librispeech/ASR/zipformer/whisper_decode.py",
+      "remote_sha256": "749881ccfc0d7adb1f581b47ebb9a108e633dcb627c0b29cfe42b7a04f723741",
+      "disposition": "excluded",
+      "reason": "Independent later Whisper comparison; excluded with its hypothesis override."
+    },
+    {
+      "path": "egs/librispeech/ASR/zipformer/zipformer.py",
+      "remote_sha256": "088f560223840ae97a400c778490f3cd0e3188d0227438a7ab99df84f0cd46e2",
+      "disposition": "main-verbatim",
+      "reason": "Exact captured remote bytes.",
+      "committed_sha256": "088f560223840ae97a400c778490f3cd0e3188d0227438a7ab99df84f0cd46e2"
+    },
+    {
+      "path": "icefall/rnn_lm/model.py",
+      "remote_sha256": "e582bf622e4c4277aba91c4e5e905a95c692a146e12f1c4060ba99d5807a8f5c",
+      "disposition": "excluded",
+      "reason": "Commented debug print only; RNN-LM model is inherited upstream."
+    },
+    {
+      "path": "icefall/rnn_lm/train.py",
+      "remote_sha256": "8a088bc0cb11fb38e037f4fe6742009a27412b23ad153959396633bfaa099664",
+      "disposition": "excluded",
+      "reason": "Commented debug prints only; RNN-LM training is inherited upstream."
+    },
+    {
+      "path": "ls_stateless6_distillation.patch",
+      "remote_sha256": "b60a534f437beb1343e9e4563752e429d246cadb9e4c13fc058df934f7eddd7f",
+      "disposition": "excluded",
+      "reason": "Stale overlapping patch; replaced by a scoped archive generated from captured source bytes."
+    }
+  ],
+  "not_collected_for_publication": [
+    "audio",
+    "dataset manifests",
+    "model or quantizer checkpoints",
+    "training logs",
+    "language model data",
+    "PDFs",
+    "credentials"
+  ]
+}

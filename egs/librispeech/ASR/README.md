@@ -4,6 +4,9 @@ Please refer to <https://k2-fsa.github.io/icefall/recipes/Non-streaming-ASR/libr
 
 [./RESULTS.md](./RESULTS.md) contains the latest results.
 
+[Formatted Zipformer ASR with MVQ knowledge distillation](zipformer/README_paper1.md)
+documents the recovered ASRU 2025 implementation, its changes, and validation limits.
+
 # Transducers
 
 There are various folders containing the name `transducer` in this folder.
